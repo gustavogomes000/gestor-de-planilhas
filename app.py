@@ -6,7 +6,9 @@ from math import ceil
 import zipfile
 from io import BytesIO
 import time
-
+import openpyxl
+from openpyxl import load_workbook
+import shutil
 
 # Configurar a página
 st.set_page_config(
@@ -471,76 +473,127 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
         status_text.text("❌ Erro no processamento")
         raise Exception(f"Erro ao dividir planilha: {str(e)}")
 
-# Função para juntar/formatar planilhas
-def merge_spreadsheets_with_template(uploaded_files, progress_bar, progress_text, status_text, template_type):
+# Função para carregar template e aplicar dados
+def load_template_and_apply_data(uploaded_files, template_type):
+    """Carrega o template e aplica os dados mantendo formatação"""
     try:
-        status_text.text("🔍 Verificando templates...")
-        progress_bar.progress(10)
-        progress_text.text("10%")
+        # Definir nomes corretos dos templates
+        template_mapping = {
+            "Clientes": "ClientesModeloExcel_Financeiro.xlsx",
+            "Equipamentos": "EquipamentosModeloExcel.xlsx", 
+            "Produtos": "ProdutosModeloExcel.xlsx",
+            "Questionarios": "QuestionariosModeloExcel.xlsx"
+        }
         
-        # Carregar template base
-        template_path = f"modelos/{template_type}ModeloExcel.xlsx"
+        template_filename = template_mapping.get(template_type)
+        if not template_filename:
+            raise ValueError(f"Template não encontrado para {template_type}")
+        
+        template_path = f"modelos/{template_filename}"
         
         if not os.path.exists(template_path):
-            # Usar estrutura da primeira planilha
-            first_file = uploaded_files[0]
-            file_ext = os.path.splitext(first_file.name)[1].lower()
-            
-            if file_ext in ['.csv', '.txt']:
-                template_df = pd.read_csv(first_file, encoding='utf-8', nrows=0)
-            else:
-                template_df = pd.read_excel(first_file, engine='openpyxl', nrows=0)
-        else:
-            template_df = pd.read_excel(template_path, engine='openpyxl', nrows=0)
+            raise FileNotFoundError(f"Arquivo template não encontrado: {template_path}")
         
-        progress_bar.progress(30)
-        progress_text.text("30%")
+        # Carregar template com openpyxl para manter formatação
+        template_wb = load_workbook(template_path)
+        template_ws = template_wb.active
         
-        if len(uploaded_files) == 1:
-            status_text.text("🎨 Formatando planilha...")
-        else:
-            status_text.text("📚 Lendo planilhas...")
-        
-        dataframes = []
-        total_files = len(uploaded_files)
-        
-        for i, uploaded_file in enumerate(uploaded_files):
+        # Ler dados dos arquivos enviados
+        all_data = []
+        for uploaded_file in uploaded_files:
             file_ext = os.path.splitext(uploaded_file.name)[1].lower()
-            
-            progress_percent = 30 + (i / total_files) * 50
-            progress_bar.progress(int(progress_percent))
-            progress_text.text(f"{int(progress_percent)}%")
-            
-            if len(uploaded_files) == 1:
-                status_text.text(f"🎨 Formatando arquivo...")
-            else:
-                status_text.text(f"📖 Processando arquivo {i+1} de {total_files}...")
             
             if file_ext in ['.csv', '.txt']:
                 df = pd.read_csv(uploaded_file, encoding='utf-8')
             else:
                 df = pd.read_excel(uploaded_file, engine='openpyxl')
             
-            # Reordenar colunas conforme template
-            df = df.reindex(columns=template_df.columns, fill_value="")
-            dataframes.append(df)
-            
-            time.sleep(0.1)
+            all_data.append(df)
         
-        progress_bar.progress(85)
-        progress_text.text("85%")
+        # Combinar dados se houver múltiplos arquivos
+        if len(all_data) > 1:
+            combined_df = pd.concat(all_data, axis=0, ignore_index=True)
+        else:
+            combined_df = all_data[0]
+        
+        # Obter cabeçalhos do template (primeira linha)
+        template_headers = []
+        for col in range(1, template_ws.max_column + 1):
+            cell_value = template_ws.cell(row=1, column=col).value
+            template_headers.append(cell_value if cell_value else f"Coluna_{col}")
+        
+        # Mapear colunas dos dados para o template
+        processed_data = []
+        
+        for _, row in combined_df.iterrows():
+            new_row = {}
+            for template_header in template_headers:
+                # Tentar encontrar coluna correspondente nos dados
+                if template_header in combined_df.columns:
+                    new_row[template_header] = row[template_header]
+                else:
+                    # Verificar por correspondência aproximada
+                    matching_cols = [col for col in combined_df.columns if str(col).lower() == str(template_header).lower()]
+                    if matching_cols:
+                        new_row[template_header] = row[matching_cols[0]]
+                    else:
+                        new_row[template_header] = ""  # Coluna vazia se não encontrar
+            
+            processed_data.append(new_row)
+        
+        # Criar DataFrame final com a estrutura do template
+        final_df = pd.DataFrame(processed_data, columns=template_headers)
+        
+        return final_df, template_headers, template_wb
+        
+    except Exception as e:
+        raise Exception(f"Erro ao processar template: {str(e)}")
+
+# Função para juntar/formatar planilhas com template
+def merge_spreadsheets_with_template(uploaded_files, progress_bar, progress_text, status_text, template_type):
+    try:
+        status_text.text("🔍 Carregando template...")
+        progress_bar.progress(10)
+        progress_text.text("10%")
+        
+        # Carregar template e aplicar dados
+        merged_df, template_columns, template_wb = load_template_and_apply_data(uploaded_files, template_type)
+        
+        progress_bar.progress(40)
+        progress_text.text("40%")
         
         if len(uploaded_files) == 1:
-            status_text.text("✨ Finalizando formatação...")
-            merged_df = dataframes[0]  # Apenas formata a única planilha
+            status_text.text("🎨 Aplicando formatação do template...")
         else:
-            status_text.text("🔗 Combinando planilhas...")
-            # Combinar verticalmente
-            merged_df = pd.concat(dataframes, axis=0, ignore_index=True)
+            status_text.text("🔗 Combinando dados no template...")
+        
+        progress_bar.progress(70)
+        progress_text.text("70%")
+        
+        # Criar arquivo final mantendo a formatação do template
+        temp_dir = tempfile.mkdtemp()
+        output_path = os.path.join(temp_dir, f"{template_type}_formatado.xlsx")
+        
+        # Salvar dados no template mantendo formatação
+        from openpyxl.utils.dataframe import dataframe_to_rows
+        
+        # Limpar dados existentes no template (mantendo cabeçalho)
+        for row in range(2, template_wb.active.max_row + 1):
+            for col in range(1, template_wb.active.max_column + 1):
+                template_wb.active.cell(row=row, column=col).value = None
+        
+        # Adicionar novos dados
+        for r_idx, row in enumerate(dataframe_to_rows(merged_df, index=False, header=False), 2):
+            for c_idx, value in enumerate(row, 1):
+                if r_idx <= template_wb.active.max_row and c_idx <= template_wb.active.max_column:
+                    template_wb.active.cell(row=r_idx, column=c_idx).value = value
+        
+        # Salvar workbook
+        template_wb.save(output_path)
         
         progress_bar.progress(95)
         progress_text.text("95%")
-        status_text.text("🎨 Aplicando formatação...")
+        status_text.text("💾 Salvando arquivo formatado...")
         time.sleep(0.3)
         
         progress_bar.progress(100)
@@ -551,13 +604,13 @@ def merge_spreadsheets_with_template(uploaded_files, progress_bar, progress_text
         else:
             status_text.text("✅ Junção concluída!")
         
-        return merged_df, template_df.columns.tolist()
+        return merged_df, template_columns, output_path
         
     except Exception as e:
         progress_bar.progress(0)
         progress_text.text("0%")
         status_text.text("❌ Erro no processamento")
-        raise Exception(f"Erro ao juntar planilhas: {str(e)}")
+        raise Exception(f"Erro ao processar planilhas: {str(e)}")
 
 # Página inicial
 def main_page():
@@ -577,8 +630,7 @@ def main_page():
             <div class="feature-title">Dividir Planilhas</div>
             <div class="feature-description">
                 Transforme planilhas extensas em arquivos menores e gerenciáveis. 
-                
-            
+            </div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -600,9 +652,6 @@ def main_page():
         if st.button("🚀 Iniciar Formatação", key="merge_btn", use_container_width=True):
             st.session_state.page = "merge"
             st.rerun()
-    
-    # Seção de informações
-    
 
 # Página de divisão com progresso
 def split_page():
@@ -619,7 +668,7 @@ def split_page():
             st.session_state.page = "main"
             st.rerun()
     
-    # Seção de upload COM FUNDO ROXO E LETRAS BRANCAS
+    # Seção de upload
     with st.container():
         st.markdown('<div class="upload-section">', unsafe_allow_html=True)
         st.subheader("📁 Upload da Planilha")
@@ -823,7 +872,7 @@ def merge_page():
     if st.session_state.get('selected_template'):
         selected_template = st.session_state.selected_template
         
-        # Upload de arquivos COM FUNDO ROXO E LETRAS BRANCAS
+        # Upload de arquivos
         with st.container():
             st.markdown('<div class="upload-section">', unsafe_allow_html=True)
             st.subheader(f"📁 Upload das Planilhas de {selected_template}")
@@ -832,7 +881,7 @@ def merge_page():
                 f"Selecione as planilhas de {selected_template} para formatar/juntar",
                 type=['xlsx', 'xls', 'csv', 'txt'],
                 accept_multiple_files=True,
-                help="Selecione uma ou mais planilhas do mesmo tipo"  # MUDANÇA AQUI: removido "duas ou mais"
+                help="Selecione uma ou mais planilhas do mesmo tipo"
             )
             
             if uploaded_files:
@@ -847,9 +896,8 @@ def merge_page():
             
             st.markdown('</div>', unsafe_allow_html=True)
         
-        # Processamento - MUDANÇA PRINCIPAL: removida a verificação de 2+ arquivos
-        if uploaded_files:  # Agora funciona com 1 ou mais arquivos
-            # Define o texto do botão dinamicamente
+        # Processamento
+        if uploaded_files:
             button_label = "🎯 Iniciar Formatação" if len(uploaded_files) == 1 else "🎯 Iniciar Junção"
             
             if st.button(button_label, type="primary", use_container_width=True):
@@ -867,17 +915,21 @@ def merge_page():
                         progress_text.text("0%")
                     
                     try:
-                        merged_df, template_columns = merge_spreadsheets_with_template(
+                        merged_df, template_columns, output_path = merge_spreadsheets_with_template(
                             uploaded_files, progress_bar, progress_text, status_text, selected_template
                         )
                         
-                        # Mensagem dinâmica baseada no número de arquivos
+                        # Ler arquivo final para download
+                        with open(output_path, 'rb') as f:
+                            excel_data = f.read()
+                        
+                        # Mensagem dinâmica
                         if len(uploaded_files) == 1:
                             success_message = f"""
                             <div class="success-card">
                                 <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Formatação Concluída!</h3>
                                 <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
-                                Planilha formatada com sucesso: <strong>{len(merged_df)}</strong> linhas e <strong>{len(merged_df.columns)}</strong> colunas.
+                                Planilha formatada com sucesso no template: <strong>{len(merged_df)}</strong> linhas e <strong>{len(merged_df.columns)}</strong> colunas.
                                 </p>
                             </div>
                             """
@@ -886,7 +938,7 @@ def merge_page():
                             <div class="success-card">
                                 <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Junção Concluída!</h3>
                                 <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
-                                <strong>{len(uploaded_files)}</strong> planilhas combinadas em um único arquivo com <strong>{len(merged_df)}</strong> linhas e <strong>{len(merged_df.columns)}</strong> colunas.
+                                <strong>{len(uploaded_files)}</strong> planilhas combinadas no template: <strong>{len(merged_df)}</strong> linhas e <strong>{len(merged_df.columns)}</strong> colunas.
                                 </p>
                             </div>
                             """
@@ -898,19 +950,14 @@ def merge_page():
                         st.dataframe(merged_df.head(10), use_container_width=True)
                         
                         # Download
-                        st.subheader("📥 Download do Arquivo Processado")
+                        st.subheader("📥 Download do Arquivo Formatado")
                         col1, col2 = st.columns(2)
                         
                         with col1:
-                            excel_buffer = BytesIO()
-                            with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                                merged_df.to_excel(writer, index=False, sheet_name=f'{selected_template}_Processado')
-                            excel_buffer.seek(0)
-                            
                             st.download_button(
-                                label="📥 Excel Formatado",
-                                data=excel_buffer,
-                                file_name=f"{selected_template.lower()}_processado.xlsx",
+                                label="📥 Excel com Formatação",
+                                data=excel_data,
+                                file_name=f"{selected_template.lower()}_formatado.xlsx",
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                                 use_container_width=True
                             )
@@ -923,10 +970,16 @@ def merge_page():
                             st.download_button(
                                 label="📥 CSV",
                                 data=csv_buffer,
-                                file_name=f"{selected_template.lower()}_processado.csv",
+                                file_name=f"{selected_template.lower()}_formatado.csv",
                                 mime="text/csv",
                                 use_container_width=True
                             )
+                        
+                        # Limpeza
+                        if os.path.exists(output_path):
+                            os.unlink(output_path)
+                        if os.path.exists(os.path.dirname(output_path)):
+                            shutil.rmtree(os.path.dirname(output_path))
                             
                     except Exception as e:
                         st.error(f"❌ Erro no processamento: {str(e)}")
