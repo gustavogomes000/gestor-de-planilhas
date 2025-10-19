@@ -6,9 +6,7 @@ from math import ceil
 import zipfile
 from io import BytesIO
 import time
-import openpyxl
-import numpy as np 
-from datetime import datetime
+
 
 # Configurar a página
 st.set_page_config(
@@ -18,283 +16,373 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# CSS personalizado PROFISSIONAL
+# CSS personalizado FINAL
 st.markdown("""
 <style>
-    /* Fundo profissional */
+    /* Fundo cinza permanente */
     .stApp {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-        min-height: 100vh;
+        background-color: #f8f9fa !important;
     }
     
-    /* Container principal com vidro */
+    /* Forçar tema claro */
+    [data-testid="stAppViewContainer"] {
+        background-color: #f8f9fa !important;
+    }
+    
+    /* Remover elementos do Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stDeployButton {visibility: hidden;}
+    
+    /* Container principal */
     .main-container {
-        background: rgba(255, 255, 255, 0.95);
-        backdrop-filter: blur(20px);
-        border-radius: 24px;
-        padding: 2.5rem;
-        margin: 2rem auto;
-        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        max-width: 1400px;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .main-container::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        left: -50%;
-        width: 200%;
-        height: 200%;
-        background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
-        background-size: 20px 20px;
-        animation: float 20s infinite linear;
-        pointer-events: none;
-    }
-    
-    @keyframes float {
-        0% { transform: translate(0, 0) rotate(0deg); }
-        100% { transform: translate(-20px, -20px) rotate(360deg); }
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        margin: 1rem auto;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        border: 1px solid #e9ecef;
+        max-width: 1200px;
     }
     
     .main-header {
-        font-size: 3rem;
+        font-size: 2.5rem;
         text-align: center;
         margin-bottom: 0.5rem;
         font-weight: 800;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #7D3C98 0%, #8E44AD 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        text-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
     
     .subtitle {
         text-align: center;
         color: #6c757d;
-        font-size: 1.2rem;
-        margin-bottom: 3rem;
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
         font-weight: 300;
     }
     
-    /* Cards de features modernos */
-    .feature-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 2rem;
-        margin: 2rem 0;
+    /* UPLOADER COM FUNDO ROXO E LETRAS BRANCAS */
+    .upload-section {
+        background: linear-gradient(135deg, #7D3C98 0%, #8E44AD 100%);
+        border-radius: 15px;
+        padding: 2rem;
+        margin: 1rem 0;
+        color: white !important;
     }
     
+    .upload-section h3 {
+        color: white !important;
+        margin-bottom: 1rem;
+    }
+    
+    .upload-section .stFileUploader > label {
+        color: white !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+    }
+    
+    .upload-section .stFileUploader > section > div {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+        border: 2px dashed rgba(255, 255, 255, 0.5) !important;
+        border-radius: 15px !important;
+        color: white !important;
+    }
+    
+    .upload-section .stFileUploader > section > div:hover {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        border-color: rgba(255, 255, 255, 0.8) !important;
+    }
+    
+    .upload-section .stFileUploader > section > div > div > small {
+        color: rgba(255, 255, 255, 0.9) !important;
+        font-size: 0.8rem !important;
+    }
+    
+    .upload-section .stFileUploader > section > div > div > button {
+        background: rgba(255, 255, 255, 0.9) !important;
+        color: #7D3C98 !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.4rem 1.2rem !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
+    }
+    
+    .upload-section .stFileUploader > section > div > div > button:hover {
+        background: white !important;
+        color: #7D3C98 !important;
+    }
+    
+    /* Cards modernos */
     .feature-card {
         background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        border-radius: 20px;
-        padding: 2.5rem 2rem;
-        border: 2px solid rgba(255, 255, 255, 0.8);
+        border-radius: 15px;
+        padding: 2rem 1.5rem;
+        margin: 1rem;
+        border: 2px solid #e9ecef;
         text-align: center;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.3s ease;
         cursor: pointer;
+        height: 250px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
-    }
-    
-    .feature-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-        transition: left 0.6s;
-    }
-    
-    .feature-card:hover::before {
-        left: 100%;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
     }
     
     .feature-card:hover {
-        transform: translateY(-12px) scale(1.02);
-        box-shadow: 0 25px 50px rgba(102, 126, 234, 0.15);
-        border-color: #667eea;
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: 0 15px 30px rgba(125, 60, 152, 0.15);
+        border-color: #7D3C98;
     }
     
     .feature-icon {
-        font-size: 4rem;
+        font-size: 3.5rem;
         margin-bottom: 1.5rem;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #7D3C98 0%, #8E44AD 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
     }
     
     .feature-title {
-        font-size: 1.6rem;
+        font-size: 1.5rem;
         color: #2d3748;
         margin-bottom: 1rem;
         font-weight: 700;
     }
     
     .feature-description {
-        font-size: 1rem;
+        font-size: 0.95rem;
         color: #4a5568;
-        line-height: 1.6;
+        line-height: 1.5;
         font-weight: 400;
     }
     
-    /* Upload section moderna */
-    .upload-section {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-        border: 2px dashed rgba(102, 126, 234, 0.3);
-        border-radius: 20px;
-        padding: 3rem 2rem;
-        margin: 2rem 0;
-        text-align: center;
-        transition: all 0.3s ease;
-    }
-    
-    .upload-section:hover {
-        border-color: rgba(102, 126, 234, 0.6);
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
-    }
-    
-    /* Botões modernos */
+    /* BOTÕES ROXOS */
     .stButton>button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background: linear-gradient(135deg, #7D3C98 0%, #8E44AD 100%) !important;
         color: white !important;
         border: none !important;
-        padding: 1rem 2rem !important;
-        border-radius: 15px !important;
-        font-size: 1.1rem !important;
+        padding: 0.7rem 1.5rem !important;
+        border-radius: 10px !important;
+        font-size: 0.95rem !important;
         font-weight: 600 !important;
         width: 100% !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3) !important;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .stButton>button::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-        transition: left 0.5s;
-    }
-    
-    .stButton>button:hover::before {
-        left: 100%;
+        box-shadow: 0 4px 12px rgba(125, 60, 152, 0.3) !important;
     }
     
     .stButton>button:hover {
-        transform: translateY(-3px) !important;
-        box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(125, 60, 152, 0.4) !important;
+        background: linear-gradient(135deg, #8E44AD 0%, #9B59B6 100%) !important;
+    }
+    
+    /* Botão voltar */
+    .back-button {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+        padding: 0.5rem 1rem !important;
+        font-size: 0.85rem !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    /* Barra de progresso roxa */
+    .stProgress > div > div > div > div {
+        background: linear-gradient(90deg, #7D3C98 0%, #8E44AD 100%) !important;
+    }
+    
+    .progress-text {
+        font-weight: 600;
+        color: #7D3C98;
+        min-width: 60px;
+        font-size: 1rem;
+    }
+    
+    /* Cards de informação ROXOS */
+    .info-card {
+        background: linear-gradient(135deg, #7D3C98 0%, #8E44AD 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        box-shadow: 0 5px 15px rgba(125, 60, 152, 0.3);
+    }
+    
+    .success-card {
+        background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+        color: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        box-shadow: 0 5px 15px rgba(39, 174, 96, 0.3);
+    }
+    
+    .warning-card {
+        background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 12px;
+        margin: 1rem 0;
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
     }
     
     /* Seções expansíveis */
     .expandable-section {
-        background: rgba(255, 255, 255, 0.8);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        padding: 2rem;
-        margin: 1.5rem 0;
-        border-left: 5px solid #667eea;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 1rem 0;
+        border-left: 4px solid #7D3C98;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+    
+    /* Templates */
+    .template-card {
+        background: white;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 0.5rem 0;
+        cursor: pointer;
         transition: all 0.3s ease;
+        text-align: center;
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
     
-    .expandable-section:hover {
-        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
-        transform: translateY(-2px);
+    .template-card:hover {
+        border-color: #7D3C98;
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(125, 60, 152, 0.1);
     }
     
-    /* Cards de status */
-    .status-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem;
-        border-radius: 20px;
-        margin: 1.5rem 0;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
-        position: relative;
-        overflow: hidden;
+    .template-card.selected {
+        border-color: #7D3C98;
+        background: linear-gradient(135deg, rgba(125, 60, 152, 0.1) 0%, rgba(142, 68, 173, 0.1) 100%);
+        box-shadow: 0 5px 15px rgba(125, 60, 152, 0.15);
     }
     
-    .status-card::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -50%;
-        width: 100%;
-        height: 100%;
-        background: rgba(255,255,255,0.1);
-        transform: rotate(30deg);
+    /* Animações */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
     
-    .success-card {
-        background: linear-gradient(135deg, #00b09b 0%, #96c93d 100%);
-        box-shadow: 0 10px 30px rgba(0, 176, 155, 0.3);
+    .fade-in {
+        animation: fadeIn 0.4s ease-out;
     }
     
-    .warning-card {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
-        box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+    /* Status indicators */
+    .status-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        margin-right: 6px;
     }
     
-    /* Barra de progresso animada */
-    .stProgress > div > div > div > div {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%) !important;
-        border-radius: 10px;
-        animation: pulse 2s infinite;
+    .status-processing {
+        background: #f39c12;
+        animation: pulse 1.5s infinite;
+    }
+    
+    .status-completed {
+        background: #27ae60;
     }
     
     @keyframes pulse {
         0% { opacity: 1; }
-        50% { opacity: 0.8; }
+        50% { opacity: 0.5; }
         100% { opacity: 1; }
     }
     
-    /* Animações de entrada */
-    @keyframes slideInUp {
-        from {
-            opacity: 0;
-            transform: translateY(30px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    /* Textos sempre legíveis */
+    .stMetric {
+        color: #2d3748 !important;
     }
     
-    .slide-in {
-        animation: slideInUp 0.6s ease-out;
+    .stMetric > div[data-testid="stMetricLabel"] > div {
+        color: #4a5568 !important;
+        font-weight: 600 !important;
+        font-size: 0.9rem !important;
     }
     
-    /* Melhorias para tabelas */
-    .dataframe {
-        border-radius: 15px !important;
-        overflow: hidden !important;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
+    .stMetric > div[data-testid="stMetricValue"] > div {
+        color: #2d3748 !important;
+        font-weight: 700 !important;
+        font-size: 1.1rem !important;
     }
     
-    /* Ajustes para mobile */
-    @media (max-width: 768px) {
-        .main-container {
-            margin: 1rem;
-            padding: 1.5rem;
-        }
-        
-        .main-header {
-            font-size: 2rem;
-        }
-        
-        .feature-grid {
-            grid-template-columns: 1fr;
-        }
+    .stRadio > label {
+        color: #2d3748 !important;
+        font-weight: 500 !important;
+    }
+    
+    .stNumberInput > label {
+        color: #2d3748 !important;
+        font-weight: 600 !important;
+    }
+    
+    .stNumberInput > div > div > input {
+        color: #2d3748 !important;
+        background: white !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+    
+    /* Textos gerais */
+    .stMarkdown {
+        color: #2d3748 !important;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        color: #2d3748 !important;
+        margin-bottom: 0.75rem !important;
+    }
+    
+    p, div, span {
+        color: #2d3748 !important;
+    }
+    
+    /* Ajustes para inputs */
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        background: white !important;
+        color: #2d3748 !important;
+        border: 1px solid #e2e8f0 !important;
+    }
+    
+    /* Ajuste para os tabs */
+    .stTabs [data-baseweb="tab-list"] {
+        background: white !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        background: white !important;
+        color: #2d3748 !important;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background: white !important;
+        color: #7D3C98 !important;
+    }
+    
+    /* Forçar cores em todos os elementos */
+    div[data-testid="stVerticalBlock"] {
+        background: transparent !important;
+    }
+    
+    section[data-testid="stFileUploadDropzone"] {
+        background: rgba(255, 255, 255, 0.1) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -384,20 +472,17 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
         raise Exception(f"Erro ao dividir planilha: {str(e)}")
 
 # Função para juntar/formatar planilhas
-def process_spreadsheets_with_template(uploaded_files, progress_bar, progress_text, status_text, template_type):
+def merge_spreadsheets_with_template(uploaded_files, progress_bar, progress_text, status_text, template_type):
     try:
         status_text.text("🔍 Verificando templates...")
         progress_bar.progress(10)
         progress_text.text("10%")
         
-        # Carregar template base se existir
+        # Carregar template base
         template_path = f"modelos/{template_type}ModeloExcel.xlsx"
         
-        if os.path.exists(template_path):
-            template_df = pd.read_excel(template_path, engine='openpyxl', nrows=0)
-            template_columns = template_df.columns.tolist()
-        else:
-            # Usar estrutura da primeira planilha como template
+        if not os.path.exists(template_path):
+            # Usar estrutura da primeira planilha
             first_file = uploaded_files[0]
             file_ext = os.path.splitext(first_file.name)[1].lower()
             
@@ -405,11 +490,16 @@ def process_spreadsheets_with_template(uploaded_files, progress_bar, progress_te
                 template_df = pd.read_csv(first_file, encoding='utf-8', nrows=0)
             else:
                 template_df = pd.read_excel(first_file, engine='openpyxl', nrows=0)
-            template_columns = template_df.columns.tolist()
+        else:
+            template_df = pd.read_excel(template_path, engine='openpyxl', nrows=0)
         
         progress_bar.progress(30)
         progress_text.text("30%")
-        status_text.text("📚 Processando planilhas...")
+        
+        if len(uploaded_files) == 1:
+            status_text.text("🎨 Formatando planilha...")
+        else:
+            status_text.text("📚 Lendo planilhas...")
         
         dataframes = []
         total_files = len(uploaded_files)
@@ -421,8 +511,8 @@ def process_spreadsheets_with_template(uploaded_files, progress_bar, progress_te
             progress_bar.progress(int(progress_percent))
             progress_text.text(f"{int(progress_percent)}%")
             
-            if total_files == 1:
-                status_text.text(f"🎨 Formatando planilha...")
+            if len(uploaded_files) == 1:
+                status_text.text(f"🎨 Formatando arquivo...")
             else:
                 status_text.text(f"📖 Processando arquivo {i+1} de {total_files}...")
             
@@ -431,12 +521,8 @@ def process_spreadsheets_with_template(uploaded_files, progress_bar, progress_te
             else:
                 df = pd.read_excel(uploaded_file, engine='openpyxl')
             
-            # Reordenar colunas conforme template e preencher colunas faltantes
-            for col in template_columns:
-                if col not in df.columns:
-                    df[col] = ""
-            
-            df = df.reindex(columns=template_columns, fill_value="")
+            # Reordenar colunas conforme template
+            df = df.reindex(columns=template_df.columns, fill_value="")
             dataframes.append(df)
             
             time.sleep(0.1)
@@ -444,8 +530,8 @@ def process_spreadsheets_with_template(uploaded_files, progress_bar, progress_te
         progress_bar.progress(85)
         progress_text.text("85%")
         
-        if total_files == 1:
-            status_text.text("🎨 Aplicando formatação...")
+        if len(uploaded_files) == 1:
+            status_text.text("✨ Finalizando formatação...")
             merged_df = dataframes[0]  # Apenas formata a única planilha
         else:
             status_text.text("🔗 Combinando planilhas...")
@@ -454,36 +540,34 @@ def process_spreadsheets_with_template(uploaded_files, progress_bar, progress_te
         
         progress_bar.progress(95)
         progress_text.text("95%")
-        status_text.text("✨ Finalizando...")
+        status_text.text("🎨 Aplicando formatação...")
         time.sleep(0.3)
         
         progress_bar.progress(100)
         progress_text.text("100%")
         
-        if total_files == 1:
+        if len(uploaded_files) == 1:
             status_text.text("✅ Formatação concluída!")
         else:
             status_text.text("✅ Junção concluída!")
         
-        return merged_df, template_columns
+        return merged_df, template_df.columns.tolist()
         
     except Exception as e:
         progress_bar.progress(0)
         progress_text.text("0%")
         status_text.text("❌ Erro no processamento")
-        raise Exception(f"Erro ao processar planilhas: {str(e)}")
+        raise Exception(f"Erro ao juntar planilhas: {str(e)}")
 
 # Página inicial
 def main_page():
     st.markdown("""
-    <div class="main-container slide-in">
-        <div class="main-header">Andrezin - Ferramentas Auvo</div>
-        <div class="subtitle">Soluções profissionais para gestão de planilhas</div>
+    <div class="main-container fade-in">
+        <div class="main-header">Planilhas Setup Auvo</div>
+        <div class="subtitle">Organize sua gestão de setups</div>
     """, unsafe_allow_html=True)
     
     # Cards principais
-    st.markdown('<div class="feature-grid">', unsafe_allow_html=True)
-    
     col1, col2 = st.columns(2)
     
     with col1:
@@ -493,8 +577,8 @@ def main_page():
             <div class="feature-title">Dividir Planilhas</div>
             <div class="feature-description">
                 Transforme planilhas extensas em arquivos menores e gerenciáveis. 
-                Ideal para processamento de grandes volumes de dados.
-            </div>
+                
+            
         </div>
         """, unsafe_allow_html=True)
         
@@ -509,7 +593,6 @@ def main_page():
             <div class="feature-title">Formatar/Juntar Planilhas</div>
             <div class="feature-description">
                 Formate planilhas individuais ou combine múltiplas planilhas seguindo templates padronizados.
-                Perfeito para padronização e consolidação.
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -518,30 +601,13 @@ def main_page():
             st.session_state.page = "merge"
             st.rerun()
     
-    st.markdown('</div>', unsafe_allow_html=True)
+    # Seção de informações
     
-    # Estatísticas e informações
-    with st.container():
-        st.markdown('<div class="expandable-section">', unsafe_allow_html=True)
-        st.subheader("📈 Estatísticas do Sistema")
-        
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Tipos de Template", "4", "Clientes, Equipamentos, Produtos, Questionários")
-        with col2:
-            st.metric("Formatos Suportados", "5", "XLSX, XLS, CSV, TXT")
-        with col3:
-            st.metric("Processamento", "Ilimitado", "Sem restrições de tamanho")
-        with col4:
-            st.metric("Atualização", "2024", "Versão mais recente")
-        
-        st.markdown('</div>', unsafe_allow_html=True)
 
-# Página de divisão
+# Página de divisão com progresso
 def split_page():
     st.markdown("""
-    <div class="main-container slide-in">
+    <div class="main-container fade-in">
         <div class="main-header">Divisor de Planilhas</div>
         <div class="subtitle">Divida planilhas grandes em partes gerenciáveis</div>
     """, unsafe_allow_html=True)
@@ -553,7 +619,7 @@ def split_page():
             st.session_state.page = "main"
             st.rerun()
     
-    # Seção de upload
+    # Seção de upload COM FUNDO ROXO E LETRAS BRANCAS
     with st.container():
         st.markdown('<div class="upload-section">', unsafe_allow_html=True)
         st.subheader("📁 Upload da Planilha")
@@ -567,23 +633,21 @@ def split_page():
     if uploaded_file is not None:
         # Informações do arquivo
         with st.container():
-            st.markdown('<div class="expandable-section">', unsafe_allow_html=True)
+            st.markdown('<div class="expandable-section compact-section">', unsafe_allow_html=True)
             st.subheader("📋 Informações do Arquivo")
             
-            col1, col2, col3, col4 = st.columns(4)
+            col1, col2, col3 = st.columns(3)
             with col1:
                 st.metric("Nome", uploaded_file.name)
             with col2:
                 st.metric("Tamanho", f"{uploaded_file.size / 1024:.1f} KB")
             with col3:
                 st.metric("Tipo", uploaded_file.type.split('/')[-1].upper())
-            with col4:
-                st.metric("Status", "Pronto para processar", "✅")
             st.markdown('</div>', unsafe_allow_html=True)
         
         # Configurações de divisão
         with st.container():
-            st.markdown('<div class="expandable-section">', unsafe_allow_html=True)
+            st.markdown('<div class="expandable-section compact-section">', unsafe_allow_html=True)
             st.subheader("⚙️ Configurações de Divisão")
             
             col1, col2 = st.columns(2)
@@ -654,8 +718,8 @@ def split_page():
                     # Resultados
                     st.markdown(f"""
                     <div class="success-card">
-                        <h3 style="margin:0; color:white; font-size: 1.5rem;">✅ Processamento Concluído!</h3>
-                        <p style="margin:0.5rem 0 0 0; color:white; font-size: 1rem;">
+                        <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Processamento Concluído!</h3>
+                        <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
                         A planilha foi dividida em <strong>{total_parts}</strong> partes com sucesso.
                         </p>
                     </div>
@@ -689,7 +753,7 @@ def split_page():
                                         df_preview = pd.read_excel(file_path, engine='openpyxl')
                                     
                                     st.write(f"**Parte {i+1}** - {len(df_preview)} linhas × {len(df_preview.columns)} colunas")
-                                    st.dataframe(df_preview.head(8), use_container_width=True)
+                                    st.dataframe(df_preview.head(6), use_container_width=True)
                                     
                                 except Exception as e:
                                     st.error(f"Erro ao visualizar: {str(e)}")
@@ -708,10 +772,10 @@ def split_page():
     
     st.markdown("</div>", unsafe_allow_html=True)
 
-# Página de junção/formatação
+# Página de junção com templates
 def merge_page():
     st.markdown("""
-    <div class="main-container slide-in">
+    <div class="main-container fade-in">
         <div class="main-header">Formatar e Juntar Planilhas</div>
         <div class="subtitle">Padronize planilhas individuais ou combine múltiplas planilhas</div>
     """, unsafe_allow_html=True)
@@ -725,7 +789,7 @@ def merge_page():
     
     # Seleção de template
     with st.container():
-        st.markdown('<div class="expandable-section">', unsafe_allow_html=True)
+        st.markdown('<div class="expandable-section compact-section">', unsafe_allow_html=True)
         st.subheader("🎯 Selecione o Tipo de Planilha")
         
         template_options = {
@@ -735,23 +799,31 @@ def merge_page():
             "Questionarios": "Formulários e pesquisas estruturadas"
         }
         
-        # Usar st.radio para seleção única
-        selected_template = st.radio(
-            "Selecione o template:",
-            options=list(template_options.keys()),
-            format_func=lambda x: f"**{x}** - {template_options[x]}",
-            key="template_radio"
-        )
+        cols = st.columns(4)
+        selected_template = st.session_state.get('selected_template', None)
         
-        # Atualizar session state
-        st.session_state.selected_template = selected_template
+        for i, (template_name, description) in enumerate(template_options.items()):
+            with cols[i]:
+                is_selected = selected_template == template_name
+                css_class = "template-card selected" if is_selected else "template-card"
+                
+                st.markdown(f"""
+                <div class="{css_class}">
+                    <h4 style="margin:0; font-size: 1.1rem;">{template_name}</h4>
+                    <p style="margin:0.5rem 0 0 0; font-size: 0.8rem; color: #6c757d;">{description}</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                if st.button("Selecionar", key=f"template_{i}", use_container_width=True):
+                    st.session_state.selected_template = template_name
+                    st.rerun()
         
         st.markdown('</div>', unsafe_allow_html=True)
     
     if st.session_state.get('selected_template'):
         selected_template = st.session_state.selected_template
         
-        # Upload de arquivos
+        # Upload de arquivos COM FUNDO ROXO E LETRAS BRANCAS
         with st.container():
             st.markdown('<div class="upload-section">', unsafe_allow_html=True)
             st.subheader(f"📁 Upload das Planilhas de {selected_template}")
@@ -760,29 +832,27 @@ def merge_page():
                 f"Selecione as planilhas de {selected_template} para formatar/juntar",
                 type=['xlsx', 'xls', 'csv', 'txt'],
                 accept_multiple_files=True,
-                help="Selecione uma ou mais planilhas do mesmo tipo"
+                help="Selecione uma ou mais planilhas do mesmo tipo"  # MUDANÇA AQUI: removido "duas ou mais"
             )
             
             if uploaded_files:
                 st.write(f"**Arquivos selecionados:** {len(uploaded_files)}")
                 
                 for i, file in enumerate(uploaded_files):
-                    col1, col2, col3 = st.columns([3, 1, 1])
+                    col1, col2 = st.columns([3, 1])
                     with col1:
                         st.write(f"**{i+1}. {file.name}**")
                     with col2:
                         st.write(f"`{file.size / 1024:.1f} KB`")
-                    with col3:
-                        st.write("✅ Pronto")
             
             st.markdown('</div>', unsafe_allow_html=True)
         
-        # Processamento
-        if uploaded_files:
-            process_label = "🎨 Formatando..." if len(uploaded_files) == 1 else "🔗 Juntando..."
+        # Processamento - MUDANÇA PRINCIPAL: removida a verificação de 2+ arquivos
+        if uploaded_files:  # Agora funciona com 1 ou mais arquivos
+            # Define o texto do botão dinamicamente
             button_label = "🎯 Iniciar Formatação" if len(uploaded_files) == 1 else "🎯 Iniciar Junção"
             
-            if st.button(button_label, type="primary", use_container_width=True, key="merge_process"):
+            if st.button(button_label, type="primary", use_container_width=True):
                 with st.container():
                     st.markdown('<div class="expandable-section">', unsafe_allow_html=True)
                     st.subheader("🔄 Processamento")
@@ -797,30 +867,35 @@ def merge_page():
                         progress_text.text("0%")
                     
                     try:
-                        merged_df, template_columns = process_spreadsheets_with_template(
+                        merged_df, template_columns = merge_spreadsheets_with_template(
                             uploaded_files, progress_bar, progress_text, status_text, selected_template
                         )
                         
-                        success_message = "formatação" if len(uploaded_files) == 1 else "junção"
-                        st.markdown(f"""
-                        <div class="success-card">
-                            <h3 style="margin:0; color:white; font-size: 1.5rem;">✅ {success_message.title()} Concluída!</h3>
-                            <p style="margin:0.5rem 0 0 0; color:white; font-size: 1rem;">
-                            <strong>{len(uploaded_files)}</strong> planilha(s) processada(s) com <strong>{len(merged_df)}</strong> linhas e <strong>{len(merged_df.columns)}</strong> colunas.
-                            </p>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # Mensagem dinâmica baseada no número de arquivos
+                        if len(uploaded_files) == 1:
+                            success_message = f"""
+                            <div class="success-card">
+                                <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Formatação Concluída!</h3>
+                                <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
+                                Planilha formatada com sucesso: <strong>{len(merged_df)}</strong> linhas e <strong>{len(merged_df.columns)}</strong> colunas.
+                                </p>
+                            </div>
+                            """
+                        else:
+                            success_message = f"""
+                            <div class="success-card">
+                                <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Junção Concluída!</h3>
+                                <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
+                                <strong>{len(uploaded_files)}</strong> planilhas combinadas em um único arquivo com <strong>{len(merged_df)}</strong> linhas e <strong>{len(merged_df.columns)}</strong> colunas.
+                                </p>
+                            </div>
+                            """
+                        
+                        st.markdown(success_message, unsafe_allow_html=True)
                         
                         # Preview
                         st.subheader("👀 Preview do Resultado")
-                        col1, col2 = st.columns([1, 3])
-                        with col1:
-                            st.metric("Total de Linhas", len(merged_df))
-                            st.metric("Total de Colunas", len(merged_df.columns))
-                            st.metric("Arquivos Processados", len(uploaded_files))
-                        
-                        with col2:
-                            st.dataframe(merged_df.head(12), use_container_width=True)
+                        st.dataframe(merged_df.head(10), use_container_width=True)
                         
                         # Download
                         st.subheader("📥 Download do Arquivo Processado")
@@ -829,16 +904,15 @@ def merge_page():
                         with col1:
                             excel_buffer = BytesIO()
                             with pd.ExcelWriter(excel_buffer, engine='openpyxl') as writer:
-                                merged_df.to_excel(writer, index=False, sheet_name=f'{selected_template}_Padronizado')
+                                merged_df.to_excel(writer, index=False, sheet_name=f'{selected_template}_Processado')
                             excel_buffer.seek(0)
                             
                             st.download_button(
                                 label="📥 Excel Formatado",
                                 data=excel_buffer,
-                                file_name=f"{selected_template.lower()}_padronizado.xlsx",
+                                file_name=f"{selected_template.lower()}_processado.xlsx",
                                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                use_container_width=True,
-                                key="download_excel"
+                                use_container_width=True
                             )
                         
                         with col2:
@@ -849,10 +923,9 @@ def merge_page():
                             st.download_button(
                                 label="📥 CSV",
                                 data=csv_buffer,
-                                file_name=f"{selected_template.lower()}_padronizado.csv",
+                                file_name=f"{selected_template.lower()}_processado.csv",
                                 mime="text/csv",
-                                use_container_width=True,
-                                key="download_csv"
+                                use_container_width=True
                             )
                             
                     except Exception as e:
