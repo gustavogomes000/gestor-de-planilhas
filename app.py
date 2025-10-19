@@ -6,8 +6,7 @@ from math import ceil
 import zipfile
 from io import BytesIO
 import time
-import openpyxl
-import numpy as np 
+
 
 # Configurar a página
 st.set_page_config(
