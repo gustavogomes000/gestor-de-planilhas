@@ -477,12 +477,12 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
 def load_template_and_apply_data(uploaded_files, template_type):
     """Carrega o template e aplica os dados mantendo formatação"""
     try:
-        # Definir nomes corretos dos templates
+        # CORREÇÃO: Usar os nomes exatos dos arquivos
         template_mapping = {
             "Clientes": "ClientesModeloExcel_Financeiro.xlsx",
             "Equipamentos": "EquipamentosModeloExcel.xlsx", 
             "Produtos": "ProdutosModeloExcel.xlsx",
-            "Questionarios": "QuestionariosModeloExcel.xlsx"
+            "Questionarios": "QuestionariosModeloExcel.xls"  # CORREÇÃO: .xls em vez de .xlsx
         }
         
         template_filename = template_mapping.get(template_type)
@@ -493,6 +493,8 @@ def load_template_and_apply_data(uploaded_files, template_type):
         
         if not os.path.exists(template_path):
             raise FileNotFoundError(f"Arquivo template não encontrado: {template_path}")
+        
+        st.info(f"📂 Carregando template: {template_filename}")
         
         # Carregar template com openpyxl para manter formatação
         template_wb = load_workbook(template_path)
@@ -522,6 +524,8 @@ def load_template_and_apply_data(uploaded_files, template_type):
             cell_value = template_ws.cell(row=1, column=col).value
             template_headers.append(cell_value if cell_value else f"Coluna_{col}")
         
+        st.info(f"📊 Estrutura do template: {len(template_headers)} colunas encontradas")
+        
         # Mapear colunas dos dados para o template
         processed_data = []
         
@@ -537,12 +541,19 @@ def load_template_and_apply_data(uploaded_files, template_type):
                     if matching_cols:
                         new_row[template_header] = row[matching_cols[0]]
                     else:
-                        new_row[template_header] = ""  # Coluna vazia se não encontrar
+                        # Verificar por correspondência parcial
+                        partial_matches = [col for col in combined_df.columns if str(template_header).lower() in str(col).lower() or str(col).lower() in str(template_header).lower()]
+                        if partial_matches:
+                            new_row[template_header] = row[partial_matches[0]]
+                        else:
+                            new_row[template_header] = ""  # Coluna vazia se não encontrar
             
             processed_data.append(new_row)
         
         # Criar DataFrame final com a estrutura do template
         final_df = pd.DataFrame(processed_data, columns=template_headers)
+        
+        st.success(f"✅ Dados processados: {len(final_df)} linhas mapeadas para o template")
         
         return final_df, template_headers, template_wb
         
