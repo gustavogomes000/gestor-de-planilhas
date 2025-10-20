@@ -473,28 +473,42 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
         status_text.text("❌ Erro no processamento")
         raise Exception(f"Erro ao dividir planilha: {str(e)}")
 
-# Função para carregar template e aplicar dados
+# CORREÇÃO: Função para carregar template e aplicar dados - ARQUIVOS SOLTOS
 def load_template_and_apply_data(uploaded_files, template_type):
     """Carrega o template e aplica os dados mantendo formatação"""
     try:
-        # CORREÇÃO: Usar os nomes exatos dos arquivos
+        # CORREÇÃO: Template mapping com nomes exatos dos arquivos SOLTOS
         template_mapping = {
             "Clientes": "ClientesModeloExcel_Financeiro.xlsx",
             "Equipamentos": "EquipamentosModeloExcel.xlsx", 
             "Produtos": "ProdutosModeloExcel.xlsx",
-            "Questionarios": "QuestionariosModeloExcel.xls"  # CORREÇÃO: .xls em vez de .xlsx
+            "Questionarios": "QuestionariosModeloExcel.xls"
         }
         
         template_filename = template_mapping.get(template_type)
         if not template_filename:
             raise ValueError(f"Template não encontrado para {template_type}")
         
-        template_path = f"modelos/{template_filename}"
+        # CORREÇÃO: Buscar arquivo SOLTO (não na pasta modelos)
+        template_path = template_filename
         
         if not os.path.exists(template_path):
-            raise FileNotFoundError(f"Arquivo template não encontrado: {template_path}")
+            # Tentar buscar em diretório atual
+            st.warning(f"⚠️ Template {template_filename} não encontrado no diretório atual. Verificando arquivos disponíveis...")
+            
+            # Listar arquivos disponíveis
+            available_files = [f for f in os.listdir('.') if os.path.isfile(f)]
+            st.write(f"Arquivos disponíveis: {available_files}")
+            
+            # Tentar encontrar arquivo similar
+            matching_files = [f for f in available_files if template_type.lower() in f.lower()]
+            if matching_files:
+                template_path = matching_files[0]
+                st.info(f"📂 Usando arquivo similar: {template_path}")
+            else:
+                raise FileNotFoundError(f"Arquivo template não encontrado: {template_filename}. Arquivos disponíveis: {available_files}")
         
-        st.info(f"📂 Carregando template: {template_filename}")
+        st.info(f"📂 Carregando template: {template_path}")
         
         # Carregar template com openpyxl para manter formatação
         template_wb = load_workbook(template_path)
