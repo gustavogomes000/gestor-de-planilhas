@@ -430,7 +430,7 @@ def copy_cell_formatting(source_cell, target_cell):
     except Exception as e:
         st.warning(f"Aviso na formatação: {str(e)}")
 
-# FUNÇÃO ATUALIZADA: Dividir planilhas mantendo formatação
+# FUNÇÃO ATUALIZADA: Dividir planilhas mantendo formatação - SEMPRE COLAR A PARTIR DA LINHA 3
 def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, status_text, lines_per_file=None, num_files=None):
     try:
         file_ext = os.path.splitext(file_path)[1].lower()
@@ -497,26 +497,28 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
                 output_file = os.path.join(temp_dir, f"{base_name}_parte_{i+1:02d}.csv")
                 part_df.to_csv(output_file, index=False, encoding='utf-8')
             
-            # Para Excel, manter formatação original
+            # Para Excel, manter formatação original - SEMPRE COLAR A PARTIR DA LINHA 3
             else:
                 # Criar novo workbook
                 new_wb = openpyxl.Workbook()
                 new_ws = new_wb.active
                 
-                # Copiar cabeçalho com formatação
-                for col in range(1, original_sheet.max_column + 1):
-                    source_cell = original_sheet.cell(row=1, column=col)
-                    target_cell = new_ws.cell(row=1, column=col)
-                    target_cell.value = source_cell.value
-                    copy_cell_formatting(source_cell, target_cell)
-                
-                # Copiar dados com formatação
-                for row_idx in range(start_idx + 2, end_idx + 2):  # +2 porque Excel começa em 1 e tem cabeçalho
-                    if row_idx <= original_sheet.max_row:
+                # CORREÇÃO: Copiar as DUAS PRIMEIRAS LINHAS com formatação (linhas 1 e 2)
+                for row in range(1, 3):  # Linhas 1 e 2
+                    if row <= original_sheet.max_row:
                         for col in range(1, original_sheet.max_column + 1):
-                            source_cell = original_sheet.cell(row=row_idx, column=col)
-                            target_row = row_idx - start_idx  # Ajustar posição no novo arquivo
-                            target_cell = new_ws.cell(row=target_row + 1, column=col)  # +1 para pular cabeçalho
+                            source_cell = original_sheet.cell(row=row, column=col)
+                            target_cell = new_ws.cell(row=row, column=col)
+                            target_cell.value = source_cell.value
+                            copy_cell_formatting(source_cell, target_cell)
+                
+                # CORREÇÃO: Copiar dados COM COLAR A PARTIR DA LINHA 3
+                for row_idx in range(start_idx + 1, end_idx + 1):  # Ajustar índices
+                    if row_idx + 1 <= original_sheet.max_row:  # +1 porque pulamos cabeçalho
+                        for col in range(1, original_sheet.max_column + 1):
+                            source_cell = original_sheet.cell(row=row_idx + 2, column=col)  # +2 para pular linhas 1 e 2
+                            target_row = row_idx - start_idx + 2  # Começar na linha 3
+                            target_cell = new_ws.cell(row=target_row, column=col)
                             target_cell.value = source_cell.value
                             copy_cell_formatting(source_cell, target_cell)
                 
@@ -553,9 +555,9 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
         status_text.text("❌ Erro no processamento")
         raise Exception(f"Erro ao dividir planilha: {str(e)}")
 
-# CORREÇÃO: Função para carregar template e aplicar dados - ARQUIVOS SOLTOS
+# CORREÇÃO: Função para carregar template e aplicar dados - ARQUIVOS SOLTOS - SEMPRE COLAR A PARTIR DA LINHA 3
 def load_template_and_apply_data(uploaded_files, template_type):
-    """Carrega o template e aplica os dados mantendo formatação"""
+    """Carrega o template e aplica os dados mantendo formatação - SEMPRE COLAR A PARTIR DA LINHA 3"""
     try:
         # CORREÇÃO: Template mapping com nomes exatos dos arquivos SOLTOS
         template_mapping = {
@@ -654,7 +656,7 @@ def load_template_and_apply_data(uploaded_files, template_type):
     except Exception as e:
         raise Exception(f"Erro ao processar template: {str(e)}")
 
-# Função para juntar/formatar planilhas com template
+# CORREÇÃO: Função para juntar/formatar planilhas com template - SEMPRE COLAR A PARTIR DA LINHA 3
 def merge_spreadsheets_with_template(uploaded_files, progress_bar, progress_text, status_text, template_type):
     try:
         status_text.text("🔍 Carregando template...")
@@ -679,16 +681,16 @@ def merge_spreadsheets_with_template(uploaded_files, progress_bar, progress_text
         temp_dir = tempfile.mkdtemp()
         output_path = os.path.join(temp_dir, f"{template_type}_formatado.xlsx")
         
-        # Salvar dados no template mantendo formatação
-        from openpyxl.utils.dataframe import dataframe_to_rows
-        
-        # Limpar dados existentes no template (mantendo cabeçalho)
-        for row in range(2, template_wb.active.max_row + 1):
+        # CORREÇÃO: Limpar dados existentes no template APENAS A PARTIR DA LINHA 3
+        # Mantendo as duas primeiras linhas (1 e 2) intactas
+        for row in range(3, template_wb.active.max_row + 1):  # Começar da linha 3
             for col in range(1, template_wb.active.max_column + 1):
                 template_wb.active.cell(row=row, column=col).value = None
         
-        # Adicionar novos dados
-        for r_idx, row in enumerate(dataframe_to_rows(merged_df, index=False, header=False), 2):
+        # CORREÇÃO: Adicionar novos dados SEMPRE A PARTIR DA LINHA 3
+        from openpyxl.utils.dataframe import dataframe_to_rows
+        
+        for r_idx, row in enumerate(dataframe_to_rows(merged_df, index=False, header=False), 3):  # Começar na linha 3
             for c_idx, value in enumerate(row, 1):
                 if r_idx <= template_wb.active.max_row and c_idx <= template_wb.active.max_column:
                     template_wb.active.cell(row=r_idx, column=c_idx).value = value
@@ -836,7 +838,7 @@ def split_page():
             
             # Informação sobre formatação
             if uploaded_file.name.endswith(('.xlsx', '.xls')):
-                st.info("🎨 **Formatação preservada**: As planilhas Excel divididas manterão cores, fontes, bordas e formatação de células.")
+                st.info("🎨 **Formatação preservada**: As planilhas Excel divididas manterão cores, fontes, bordas e formatação de células. **Dados sempre colados a partir da linha 3**.")
             else:
                 st.info("📝 **Arquivo CSV**: A divisão será feita mantendo a estrutura de dados.")
                 
@@ -884,7 +886,7 @@ def split_page():
                         <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Processamento Concluído!</h3>
                         <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
                         A planilha foi dividida em <strong>{total_parts}</strong> partes com sucesso.
-                        {'<br>🎨 Formatação original preservada!' if uploaded_file.name.endswith(('.xlsx', '.xls')) else ''}
+                        {'<br>🎨 Formatação original preservada! Dados colados a partir da linha 3.' if uploaded_file.name.endswith(('.xlsx', '.xls')) else ''}
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -1045,6 +1047,7 @@ def merge_page():
                                 <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Formatação Concluída!</h3>
                                 <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
                                 Planilha formatada com sucesso no template: <strong>{len(merged_df)}</strong> linhas e <strong>{len(merged_df.columns)}</strong> colunas.
+                                <br><strong>Dados colados a partir da linha 3</strong> - Linhas 1 e 2 mantidas fixas.
                                 </p>
                             </div>
                             """
@@ -1054,6 +1057,7 @@ def merge_page():
                                 <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Junção Concluída!</h3>
                                 <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
                                 <strong>{len(uploaded_files)}</strong> planilhas combinadas no template: <strong>{len(merged_df)}</strong> linhas e <strong>{len(merged_df.columns)}</strong> colunas.
+                                <br><strong>Dados colados a partir da linha 3</strong> - Linhas 1 e 2 mantidas fixas.
                                 </p>
                             </div>
                             """
