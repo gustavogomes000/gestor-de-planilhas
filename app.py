@@ -1114,7 +1114,7 @@ if 'page' not in st.session_state:
 if 'selected_template' not in st.session_state:
     st.session_state.selected_template = None
 
-# Navegação
+# Navegação 
 if st.session_state.page == 'main':
     main_page()
 elif st.session_state.page == 'split':
