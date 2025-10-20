@@ -867,10 +867,10 @@ def merge_page():
         st.subheader("🎯 Selecione o Tipo de Planilha")
         
         template_options = {
-            "Clientes": "Cadastro de clientes com dados financeiros",
-            "Equipamentos": "Controle de equipamentos e garantias", 
-            "Produtos": "Gestão de produtos e estoque",
-            "Questionarios": "Formulários e pesquisas estruturadas"
+            "Clientes": ,
+            "Equipamentos":, 
+            "Produtos": ,
+            "Questionarios":,
         }
         
         cols = st.columns(4)
