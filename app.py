@@ -10,6 +10,7 @@ import openpyxl
 from openpyxl import load_workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import shutil
+import concurrent.futures
 
 # Configurar a página
 st.set_page_config(
@@ -481,30 +482,21 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
         progress_bar.progress(20)
         progress_text.text("20%")
         
-        for i in range(total_parts):
-            start_idx = i * lines_per_file
-            end_idx = min((i + 1) * lines_per_file, total_lines)
-            
-            # Atualizar progresso
-            progress_percent = 20 + (i / total_parts) * 70
-            progress_bar.progress(int(progress_percent))
-            progress_text.text(f"{int(progress_percent)}%")
-            status_text.text(f"📝 Criando parte {i+1} de {total_parts}...")
-            
-            # Para CSV, salvar normalmente
+        # --- Otimização: processar partes em paralelo, mantendo cópia das 2 primeiras linhas para Excel ---
+        def process_part(i, start_idx, end_idx):
+            # Para CSV, salvar normalmente (faster via pandas)
             if is_csv:
                 part_df = df.iloc[start_idx:end_idx]
                 output_file = os.path.join(temp_dir, f"{base_name}_parte_{i+1:02d}.csv")
-                part_df.to_csv(output_file, index=False, encoding='utf-8')
-            
-            # Para Excel, manter formatação original - SEMPRE COLAR A PARTIR DA LINHA 3
+                part_df.to_csv(output_file, index=False, encoding='utf-8-sig')
+                return output_file
             else:
-                # Criar novo workbook
+                # Para Excel, criar workbook novo e manter as duas primeiras linhas formatadas
                 new_wb = openpyxl.Workbook()
                 new_ws = new_wb.active
                 
-                # CORREÇÃO: Copiar as DUAS PRIMEIRAS LINHAS com formatação (linhas 1 e 2)
-                for row in range(1, 3):  # Linhas 1 e 2
+                # Copiar linhas 1 e 2 com formatação (se existirem)
+                for row in range(1, 3):
                     if row <= original_sheet.max_row:
                         for col in range(1, original_sheet.max_column + 1):
                             source_cell = original_sheet.cell(row=row, column=col)
@@ -512,27 +504,52 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
                             target_cell.value = source_cell.value
                             copy_cell_formatting(source_cell, target_cell)
                 
-                # CORREÇÃO: Copiar dados COM COLAR A PARTIR DA LINHA 3
-                for row_idx in range(start_idx + 1, end_idx + 1):  # Ajustar índices
-                    if row_idx + 1 <= original_sheet.max_row:  # +1 porque pulamos cabeçalho
+                # Colar dados sempre a partir da linha 3
+                # Ajuste nos índices: df é 0-indexed (pandas leu sem cabeçalho)
+                # start_idx, end_idx são baseados em contagem de linhas de df
+                for idx_row, df_row_index in enumerate(range(start_idx, end_idx), start=3):
+                    if df_row_index + 1 <= original_sheet.max_row:  # +1 porque pandas leu sem contar linha de cabeçalho explicitamente
                         for col in range(1, original_sheet.max_column + 1):
-                            source_cell = original_sheet.cell(row=row_idx + 2, column=col)  # +2 para pular linhas 1 e 2
-                            target_row = row_idx - start_idx + 2  # Começar na linha 3
-                            target_cell = new_ws.cell(row=target_row, column=col)
+                            source_cell = original_sheet.cell(row=df_row_index + 2, column=col)  # +2 para pular 1 e 2
+                            target_cell = new_ws.cell(row=idx_row, column=col)
                             target_cell.value = source_cell.value
                             copy_cell_formatting(source_cell, target_cell)
                 
                 # Ajustar largura das colunas
                 for col in range(1, original_sheet.max_column + 1):
                     column_letter = openpyxl.utils.get_column_letter(col)
-                    new_ws.column_dimensions[column_letter].width = original_sheet.column_dimensions[column_letter].width
+                    try:
+                        new_ws.column_dimensions[column_letter].width = original_sheet.column_dimensions[column_letter].width
+                    except Exception:
+                        # Caso a coluna não tenha largura definida
+                        pass
                 
                 output_file = os.path.join(temp_dir, f"{base_name}_parte_{i+1:02d}.xlsx")
                 new_wb.save(output_file)
                 new_wb.close()
-            
-            generated_files.append(output_file)
-            time.sleep(0.05)
+                return output_file
+        
+        # Preparar jobs
+        jobs = []
+        for i in range(total_parts):
+            start_idx = i * lines_per_file
+            end_idx = min((i + 1) * lines_per_file, total_lines)
+            jobs.append((i, start_idx, end_idx))
+        
+        # Executar em paralelo (limitando threads para não sobrecarregar)
+        max_workers = min(6, max(1, total_parts))
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_job = {executor.submit(process_part, j[0], j[1], j[2]): j for j in jobs}
+            completed = 0
+            for future in concurrent.futures.as_completed(future_to_job):
+                part_output = future.result()
+                generated_files.append(part_output)
+                completed += 1
+                progress_percent = 20 + (completed / total_parts) * 70
+                progress_bar.progress(int(progress_percent))
+                progress_text.text(f"{int(progress_percent)}%")
+                status_text.text(f"📝 Criando parte {completed} de {total_parts}...")
+                time.sleep(0.02)
         
         # Fechar workbook original se existir
         if original_workbook:
@@ -761,7 +778,7 @@ def main_page():
             st.session_state.page = "merge"
             st.rerun()
 
-# Página de divisão com progresso
+# Página de divisão com progresso (OTIMIZADA)
 def split_page():
     st.markdown("""
     <div class="main-container fade-in">
@@ -865,7 +882,7 @@ def split_page():
                         tmp_file.write(uploaded_file.getvalue())
                         tmp_path = tmp_file.name
                     
-                    # Processar com barra de progresso
+                    # Processar com barra de progresso (função otimizada)
                     generated_files, temp_dir, total_parts = split_spreadsheet_with_progress(
                         tmp_path, progress_bar, progress_text, status_text, lines_per_file, num_files
                     )
@@ -929,7 +946,10 @@ def split_page():
                         if os.path.exists(file_path):
                             os.unlink(file_path)
                     if os.path.exists(temp_dir):
-                        os.rmdir(temp_dir)
+                        try:
+                            shutil.rmtree(temp_dir)
+                        except Exception:
+                            pass
                         
                 except Exception as e:
                     st.error(f"❌ Erro no processamento: {str(e)}")
