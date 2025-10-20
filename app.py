@@ -894,16 +894,20 @@ def split_page():
                     # Limpar arquivo temporário
                     os.unlink(tmp_path)
                     
-                    # Resultados
-                    st.markdown(f"""
+                    # Resultados - CORREÇÃO DA F-STRING AQUI
+                    success_html = f"""
                     <div class="success-card">
                         <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Processamento Concluído!</h3>
                         <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
                         A planilha foi dividida em <strong>{total_parts}</strong> partes com sucesso.
-                        {'<br>🎨 <strong>Estrutura completa preservada</strong> - Linhas 1-2 fixas + formatação!' if uploaded_file.name.endswith(('.xlsx', '.xls')) : ''}
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    """
+                    
+                    if uploaded_file.name.endswith(('.xlsx', '.xls')):
+                        success_html += '<br>🎨 <strong>Estrutura completa preservada</strong> - Linhas 1-2 fixas + formatação!'
+                    
+                    success_html += '</p></div>'
+                    
+                    st.markdown(success_html, unsafe_allow_html=True)
                     
                     # Download
                     col1, col2 = st.columns(2)
@@ -1054,7 +1058,7 @@ def merge_page():
                         with open(output_path, 'rb') as f:
                             excel_data = f.read()
                         
-                        # Mensagem dinâmica
+                        # Mensagem dinâmica - CORREÇÃO DAS F-STRINGS AQUI TAMBÉM
                         if len(uploaded_files) == 1:
                             success_message = f"""
                             <div class="success-card">
