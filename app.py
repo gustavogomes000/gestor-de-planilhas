@@ -8,6 +8,7 @@ from io import BytesIO
 import time
 import openpyxl
 from openpyxl import load_workbook
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 import shutil
 
 # Configurar a página
@@ -389,7 +390,47 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Função para dividir planilhas com barra de progresso
+# NOVA FUNÇÃO: Copiar formatação entre worksheets
+def copy_cell_formatting(source_cell, target_cell):
+    """Copia a formatação de uma célula para outra"""
+    try:
+        if source_cell.font:
+            target_cell.font = Font(
+                name=source_cell.font.name,
+                size=source_cell.font.size,
+                bold=source_cell.font.bold,
+                italic=source_cell.font.italic,
+                color=source_cell.font.color
+            )
+        
+        if source_cell.fill:
+            target_cell.fill = PatternFill(
+                fill_type=source_cell.fill.fill_type,
+                start_color=source_cell.fill.start_color,
+                end_color=source_cell.fill.end_color
+            )
+        
+        if source_cell.alignment:
+            target_cell.alignment = Alignment(
+                horizontal=source_cell.alignment.horizontal,
+                vertical=source_cell.alignment.vertical,
+                wrap_text=source_cell.alignment.wrap_text
+            )
+        
+        if source_cell.border:
+            target_cell.border = Border(
+                left=Side(style=source_cell.border.left.style, color=source_cell.border.left.color),
+                right=Side(style=source_cell.border.right.style, color=source_cell.border.right.color),
+                top=Side(style=source_cell.border.top.style, color=source_cell.border.top.color),
+                bottom=Side(style=source_cell.border.bottom.style, color=source_cell.border.bottom.color)
+            )
+        
+        target_cell.number_format = source_cell.number_format
+        
+    except Exception as e:
+        st.warning(f"Aviso na formatação: {str(e)}")
+
+# FUNÇÃO ATUALIZADA: Dividir planilhas mantendo formatação
 def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, status_text, lines_per_file=None, num_files=None):
     try:
         file_ext = os.path.splitext(file_path)[1].lower()
@@ -412,7 +453,13 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
                 total_lines = sum(1 for line in f) - 1
             
             df = pd.read_csv(file_path, encoding='utf-8')
+            original_workbook = None
         else:
+            # Para Excel, carregar com openpyxl para manter formatação
+            original_workbook = load_workbook(file_path)
+            original_sheet = original_workbook.active
+            
+            # Ler dados com pandas também
             df = pd.read_excel(file_path, engine='openpyxl')
             total_lines = len(df)
         
@@ -437,7 +484,6 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
         for i in range(total_parts):
             start_idx = i * lines_per_file
             end_idx = min((i + 1) * lines_per_file, total_lines)
-            part_df = df.iloc[start_idx:end_idx]
             
             # Atualizar progresso
             progress_percent = 20 + (i / total_parts) * 70
@@ -445,16 +491,50 @@ def split_spreadsheet_with_progress(file_path, progress_bar, progress_text, stat
             progress_text.text(f"{int(progress_percent)}%")
             status_text.text(f"📝 Criando parte {i+1} de {total_parts}...")
             
-            # Salvar a parte
+            # Para CSV, salvar normalmente
             if is_csv:
+                part_df = df.iloc[start_idx:end_idx]
                 output_file = os.path.join(temp_dir, f"{base_name}_parte_{i+1:02d}.csv")
                 part_df.to_csv(output_file, index=False, encoding='utf-8')
+            
+            # Para Excel, manter formatação original
             else:
+                # Criar novo workbook
+                new_wb = openpyxl.Workbook()
+                new_ws = new_wb.active
+                
+                # Copiar cabeçalho com formatação
+                for col in range(1, original_sheet.max_column + 1):
+                    source_cell = original_sheet.cell(row=1, column=col)
+                    target_cell = new_ws.cell(row=1, column=col)
+                    target_cell.value = source_cell.value
+                    copy_cell_formatting(source_cell, target_cell)
+                
+                # Copiar dados com formatação
+                for row_idx in range(start_idx + 2, end_idx + 2):  # +2 porque Excel começa em 1 e tem cabeçalho
+                    if row_idx <= original_sheet.max_row:
+                        for col in range(1, original_sheet.max_column + 1):
+                            source_cell = original_sheet.cell(row=row_idx, column=col)
+                            target_row = row_idx - start_idx  # Ajustar posição no novo arquivo
+                            target_cell = new_ws.cell(row=target_row + 1, column=col)  # +1 para pular cabeçalho
+                            target_cell.value = source_cell.value
+                            copy_cell_formatting(source_cell, target_cell)
+                
+                # Ajustar largura das colunas
+                for col in range(1, original_sheet.max_column + 1):
+                    column_letter = openpyxl.utils.get_column_letter(col)
+                    new_ws.column_dimensions[column_letter].width = original_sheet.column_dimensions[column_letter].width
+                
                 output_file = os.path.join(temp_dir, f"{base_name}_parte_{i+1:02d}.xlsx")
-                part_df.to_excel(output_file, index=False, engine='openpyxl')
+                new_wb.save(output_file)
+                new_wb.close()
             
             generated_files.append(output_file)
             time.sleep(0.05)
+        
+        # Fechar workbook original se existir
+        if original_workbook:
+            original_workbook.close()
         
         progress_bar.progress(95)
         progress_text.text("95%")
@@ -655,6 +735,7 @@ def main_page():
             <div class="feature-title">Dividir Planilhas</div>
             <div class="feature-description">
                 Transforme planilhas extensas em arquivos menores e gerenciáveis. 
+                <strong>Mantém a formatação original!</strong>
             </div>
         </div>
         """, unsafe_allow_html=True)
@@ -683,7 +764,7 @@ def split_page():
     st.markdown("""
     <div class="main-container fade-in">
         <div class="main-header">Divisor de Planilhas</div>
-        <div class="subtitle">Divida planilhas grandes em partes gerenciáveis</div>
+        <div class="subtitle">Divida planilhas grandes em partes gerenciáveis <strong>mantendo a formatação original</strong></div>
     """, unsafe_allow_html=True)
     
     # Botão voltar
@@ -700,7 +781,7 @@ def split_page():
         uploaded_file = st.file_uploader(
             "Selecione o arquivo para dividir",
             type=['xlsx', 'xls', 'csv', 'txt'],
-            help="Arraste ou clique para selecionar o arquivo"
+            help="Arraste ou clique para selecionar o arquivo. Para Excel, a formatação será mantida!"
         )
         st.markdown('</div>', unsafe_allow_html=True)
     
@@ -716,7 +797,8 @@ def split_page():
             with col2:
                 st.metric("Tamanho", f"{uploaded_file.size / 1024:.1f} KB")
             with col3:
-                st.metric("Tipo", uploaded_file.type.split('/')[-1].upper())
+                file_type = "Excel com Formatação" if uploaded_file.name.endswith(('.xlsx', '.xls')) else "CSV/Texto"
+                st.metric("Tipo", file_type)
             st.markdown('</div>', unsafe_allow_html=True)
         
         # Configurações de divisão
@@ -751,6 +833,13 @@ def split_page():
                         key="files_input"
                     )
                     lines_per_file = None
+            
+            # Informação sobre formatação
+            if uploaded_file.name.endswith(('.xlsx', '.xls')):
+                st.info("🎨 **Formatação preservada**: As planilhas Excel divididas manterão cores, fontes, bordas e formatação de células.")
+            else:
+                st.info("📝 **Arquivo CSV**: A divisão será feita mantendo a estrutura de dados.")
+                
             st.markdown('</div>', unsafe_allow_html=True)
         
         # Área de processamento
@@ -795,6 +884,7 @@ def split_page():
                         <h3 style="margin:0; color:white; font-size: 1.3rem;">✅ Processamento Concluído!</h3>
                         <p style="margin:0.5rem 0 0 0; color:white; font-size: 0.95rem;">
                         A planilha foi dividida em <strong>{total_parts}</strong> partes com sucesso.
+                        {'<br>🎨 Formatação original preservada!' if uploaded_file.name.endswith(('.xlsx', '.xls')) else ''}
                         </p>
                     </div>
                     """, unsafe_allow_html=True)
@@ -867,12 +957,11 @@ def merge_page():
         st.subheader("🎯 Selecione o Tipo de Planilha")
         
         template_options = {
-    "Clientes": "",
-    "Equipamentos": "",
-    "Produtos": "",
-    "Questionarios": ""
-}
-
+            "Clientes": "Template para dados de clientes",
+            "Equipamentos": "Template para cadastro de equipamentos", 
+            "Produtos": "Template para catálogo de produtos",
+            "Questionarios": "Template para formulários de questionários"
+        }
         
         cols = st.columns(4)
         selected_template = st.session_state.get('selected_template', None)
