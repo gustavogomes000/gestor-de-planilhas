@@ -867,11 +867,12 @@ def merge_page():
         st.subheader("🎯 Selecione o Tipo de Planilha")
         
         template_options = {
-            "Clientes": ,
-            "Equipamentos":, 
-            "Produtos": ,
-            "Questionarios":,
-        }
+    "Clientes": "",
+    "Equipamentos": "",
+    "Produtos": "",
+    "Questionarios": ""
+}
+
         
         cols = st.columns(4)
         selected_template = st.session_state.get('selected_template', None)
