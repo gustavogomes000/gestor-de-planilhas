@@ -1,0 +1,129 @@
+📊 Gestor de Planilhas Auvo
+Ferramenta profissional para divisão e formatação de planilhas em larga escala
+
+https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white
+https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white
+https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white
+https://img.shields.io/badge/OpenPyXL-217346?style=for-the-badge
+https://img.shields.io/badge/%F0%9F%8C%90-Online-brightgreen?style=for-the-badge
+
+🚀 ACESSO ONLINE
+https://gestordeplanilhas.streamlit.app/
+Uma aplicação web moderna e eficiente para processamento de planilhas Excel e CSV, desenvolvida especialmente para lidar com arquivos grandes (50.000+ linhas) mantendo a formatação original.
+
+✨ Funcionalidades Principais
+🎯 Divisão Inteligente de Planilhas
+⚡ Divisão por linhas: Configure quantas linhas por arquivo
+
+📦 Divisão por partes: Especifique o número total de arquivos
+
+🎨 Formatação preservada: Mantém cores, fontes, bordas e estilos
+
+🚀 Otimizado para grandes volumes: Processa eficientemente planilhas com 50k+ linhas
+
+📥 Download em ZIP: Todas as partes compactadas em um único arquivo
+
+🔗 Junção e Formatação com Templates
+📋 Múltiplos templates: Clientes, Equipamentos, Produtos, Questionários
+
+🎯 Formatação padrão: Aplica estrutura de templates profissionais
+
+🔄 Combinação inteligente: Une múltiplas planilhas mantendo consistência
+
+📊 Linhas fixas preservadas: Sempre mantém as duas primeiras linhas intactas
+
+⚡ Performance Otimizada
+🔄 Processamento em lotes: Evita memory errors com arquivos grandes
+
+🎯 Estratégias adaptativas: Algoritmos diferentes baseados no tamanho do arquivo
+
+📊 Progresso em tempo real: Barra de progresso com porcentagem detalhada
+
+💾 Compressão eficiente: ZIP otimizado para rápido download
+
+🎯 Comece Agora
+🌐 Acesse a Aplicação Online
+Não requer instalação! Basta acessar o link e começar a usar imediatamente.
+
+📋 Como Usar
+Passo a Passo Rápido:
+🌐 Acesse https://gestordeplanilhas.streamlit.app/
+
+📁 Faça upload da sua planilha (Excel ou CSV)
+
+⚙️ Escolha a operação desejada:
+
+Dividir Planilha: Para arquivos muito grandes
+
+Formatar/Juntar: Para padronizar com templates
+
+🎯 Configure as opções desejadas
+
+🚀 Processe e 📥 Baixe o resultado
+
+🎨 Templates Disponíveis
+Template	Descrição	Casos de Uso
+👥 Clientes	Dados de clientes e informações financeiras	CRM, Vendas, Faturamento
+⚙️ Equipamentos	Cadastro de equipamentos e especificações	Inventário, Manutenção, Ativos
+📦 Produtos	Catálogo de produtos e inventário	E-commerce, Estoque, Vendas
+📝 Questionários	Formulários e pesquisas estruturadas	Pesquisas, Enquetes, Coleta de dados
+📊 Formatos Suportados
+Formato	Recursos	Tamanho Recomendado
+Excel (.xlsx, .xls)	🎨 Formatação completa, fórmulas, múltiplas abas	Até 100MB
+CSV (.csv, .txt)	📊 Estrutura de dados, encoding UTF-8	Até 200MB
+⚡ Dicas de Performance
+Para Arquivos Grandes (50k+ linhas):
+✅ Use 10.000 linhas por arquivo para melhor performance
+
+✅ Arquivos muito grandes são processados com otimizações automáticas
+
+
+📈 50.000 linhas: 1-2 minutos
+
+🚀 100.000+ linhas: 3-5 minutos
+
+🛠️ Para Desenvolvedores
+Execução Local (Opcional)
+bash
+# Clone o repositório
+git clone https://github.com/seu-usuario/planilhas-setup-auvo.git
+cd planilhas-setup-auvo
+
+# Instale as dependências
+pip install -r requirements.txt
+
+# Execute localmente
+streamlit run app.py
+Tecnologias Utilizadas
+Frontend: Streamlit
+
+Processamento: Pandas, OpenPyXL
+
+Performance: Chunk processing, Batch operations
+
+Estilização: CSS customizado
+
+❓ Perguntas Frequentes
+🔄 A aplicação salva meus dados?
+Não! Todos os processamentos são feitos em memória temporária. Seus dados são excluídos automaticamente após o download.
+
+🛡️ É seguro usar?
+Sim! A aplicação roda totalmente no seu navegador. Os arquivos não são armazenados em servidores.
+
+💰 É gratuito?
+Completamente gratuito! Sem limitações de uso ou requisitos de cadastro.
+
+📁 Posso processar múltiplos arquivos?
+Sim! Na função de junção, você pode fazer upload de vários arquivos simultaneamente.
+
+📞 Suporte e Contato
+Encontrou algum problema ou tem sugestões de melhoria
+
+📧 Contato: Gustavogomesleitefranco@gmail.com
+
+📄 Licença
+Este projeto está sob a licença MIT. Veja o arquivo LICENSE para mais detalhes.
+
+⭐ Gostou do projeto? Deixe uma estrela no GitHub!
+
+🌐 Acesse agora: https://gestordeplanilhas.streamlit.app/
